@@ -1,0 +1,3 @@
+#!/bin/sh
+docker build --build-arg AWSCLI_VER=$AWSCLI_VER \
+             -t $IMAGE_NAME .

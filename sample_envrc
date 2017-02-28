@@ -1,0 +1,18 @@
+
+# recommended to use direnv or autoenv
+# brew install direnv
+
+# AWS Registry Information if appropriate
+export AWS_REGISTRY_ID=xxxx
+export AWS_DEFAULT_REGION=xxxx
+export AWS_REGISTRY=$AWS_REGISTRY_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+export AWS_REGISTRY_NAMESPACE=xxx
+
+# Nomad
+export NOMAD_ADDR=http://xxx:xxx
+
+# docker repo
+export DOCKER_CI_REPO=$AWS_REGISTRY/$AWS_REGISTRY_NAMESPACE
+# export DOCKER_CI_REPO=local
+export USECACHE=true
+export DRYRUN=true
