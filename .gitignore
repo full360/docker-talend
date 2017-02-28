@@ -1,0 +1,5 @@
+**/.build-*
+**/.tag-*
+**/.push-*
+.envrc
+docker-ci.mk
