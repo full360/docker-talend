@@ -1,8 +1,7 @@
-FROM openjdk:8-jdk-alpine
+FROM jruby:9.1-jre-alpine
 
-
-LABEL build.publish.majorversion="8-openjdk"
-LABEL build.publish.imagebase="alpine"
+LABEL build.publish.majorversion="9.1-jre-alpine"
+LABEL build.publish.imagebase="jruby"
 
 ARG AWSCLI_VER
 ENV PATH .:$PATH
