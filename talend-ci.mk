@@ -117,6 +117,28 @@ $(foreach J,$(JOBINFOFILES),$(foreach D, $(DOCKERFILES),$(eval $(call JOBRULE,$J
 export REGISTRY_REGION
 export KMSKEYPREFIX
 
+.PHONY: showtalendjobs
+showtalendjobs:
+	$(foreach I, $(JOBINFOFILES),  $(info | $(dir $(I)))      )
+	@exit 0
+
+
+.PHONY: showecs
+showecs:
+	$(foreach I, $(ECSJOBS),  $(info | $(I))     )
+	@exit 0
+
+mkhelp : mktalendhelp
+
+.PHONY: mktalendhelp
+mktalendhelp:
+	$(info Available talend targets:             )
+	$(info | showtalendjobs                      )
+	$(info | showecs                             )
+	$(info | deployecsjob.CONTEXT                )
+	@exit 0
+
+
 ecsjobs: $(ECSJOBS)
 
 clean : talendclean
