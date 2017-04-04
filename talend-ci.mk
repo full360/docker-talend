@@ -41,11 +41,13 @@ define CONTEXTRULE
 # List of ECS JOBS
 ECSJOBS += $(basename $T)-$C-generated.json
 %-$C-generated.json: %.ctmpl
-	@CONTEXT=$C IMAGE=$(call image_from_dockerfile,$(dir $T)../../Dockerfile) consul-template -template "$$<:$$@" --once
+	@CONTEXT=$C IMAGE=$(call image_from_dockerfile,$(dir $T)../../Dockerfile) consul-template -template "$$<:$$@" --once \
+	&& cat $(basename $T)-$C-generated.json
 
 %-$C-deployed.json : %-$C-generated.json
 	aws ecs register-task-definition --cli-input-json file://./$$< > $$@
 
+generateecsjob.$C : $(basename $T)-$C-generated.json
 deployecsjob.$C : $(basename $T)-$C-deployed.json
 endef
 
