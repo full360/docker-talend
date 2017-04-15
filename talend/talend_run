@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 talend_block () {
 	touch ${TALENDJOBDIR}/block
