@@ -1,5 +1,10 @@
 #!/bin/sh
 
+talend_block () {
+	touch ${TALENDJOBDIR}/block
+}
+export -f talend_block
+
 if [ -e "${TALENDJOBDIR}/pre_job_hook.sh" ]
 then
 	echo "running pre-job hook"
