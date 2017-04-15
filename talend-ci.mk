@@ -39,7 +39,8 @@ include docker-ci.mk
 # the ECR Templates
 define CONTEXTRULE
 # List of ECS JOBS
-ECSJOBS += $(basename $T)-$C-generated.json
+DEPLOYECSJOBS += deployecsjob.$C
+GENERATEECSJOBS += generateecsjob.$C
 %-$C-generated.json: %.ctmpl
 	@CONTEXT=$C IMAGE=$(call image_from_dockerfile,$(dir $T)../../Dockerfile) consul-template -template "$$<:$$@" --once \
 	&& cat $(basename $T)-$C-generated.json
@@ -97,7 +98,9 @@ endif
 $(call imagebase_from_dockerfile,$(D)).BUILDARGS += TALENDJOB=$$(job)_$$(jobVersion) \
              TALENDPREFIX=$$(job) \
 						 TALENDJOBVER=$$(jobVersion) \
-						 TALENDJOBVERUNDERSCORE=$$(subst .,_,$$(jobVersion))
+						 TALENDJOBVERUNDERSCORE=$$(subst .,_,$$(jobVersion)) \
+						 TALENDPROJECT=$$(call lcase,$$(project)) \
+						 TALENDPREFIXLCASE=$$(call lcase,$$(job))
 endef
 
 # find all the talend contexts available in the jobs
@@ -137,11 +140,16 @@ mktalendhelp:
 	$(info Available talend targets:             )
 	$(info | showtalendjobs                      )
 	$(info | showecs                             )
+	$(info | deployecsjob.all                    )
 	$(info | deployecsjob.CONTEXT                )
+	$(info | generateecsjob.all                  )
+	$(info | generateecsjob.CONTEXT              )
 	@exit 0
 
 
-ecsjobs: $(ECSJOBS)
+deployecsjob.all: $(DEPLOYECSJOBS)
+
+generateecsjob.all: $(GENERATEECSJOBS)
 
 clean : talendclean
 
