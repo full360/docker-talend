@@ -30,6 +30,7 @@ RUN curl  -s -L -o /tmp/biscuit.tar.gz \
 COPY timeout3 /usr/bin/timeout3
 ENV TALEND_EXECUTABLE "timeout3 -t 3600 java"
 COPY talend_run /usr/bin/talend_run
+COPY talend_run /usr/bin/talend_block
 
 ENTRYPOINT ["talend_run"]
 
