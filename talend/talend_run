@@ -30,14 +30,14 @@ trap 'touch ${TALENDJOBDIR}/block' TERM INT
 # this runs for ever until interruped, or the block semaphone is created
 while true :
 do
+	$TALENDCOMMAND --context=$1 "$@" &
+	PID=$!
+	wait $PID
 	if [ -e "${TALENDJOBDIR}/block" ]
 	then
 		echo "breaking due to presence of ${TALENDJOBDIR}/block"
 		break
 	fi
-	$TALENDCOMMAND --context=$1 "$@" &
-	PID=$!
-	wait $PID
 done
 
 trap - TERM
