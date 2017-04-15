@@ -37,6 +37,10 @@ RUN curl  -s -L -o /tmp/biscuit.tar.gz \
     tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin && \
     rm /tmp/biscuit.tar.gz
 
+# timout script
+COPY timeout3 /usr/bin/timeout3
+RUN chmod +x /usr/bin/timeout3
+
 # unpack the talend jar
 ONBUILD ADD talend/$TALENDPREFIX.tar.gz /etl/
 
