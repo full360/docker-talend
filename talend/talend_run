@@ -1,0 +1,52 @@
+#!/bin/sh
+
+if [ -e "${TALENDJOBDIR}/pre_job_hook.sh" ]
+then
+	echo "running pre-job hook"
+	${TALENDJOBDIR}/pre_job_hook.sh
+fi
+
+# set TALENDCOMMAND after any pre-job hooks
+export TALENDCOMMAND="${TALEND_EXECUTABLE} ${JAVA_ARGS} ${JAVA_CP} ${TALENDJOBCLASS}"
+printf "project:      %s\n\
+job:          %s\n\
+prefix:       %s\n\
+prefixlcase:  %s\n\
+job version:  %s\n\
+job _version: %s\n\
+job dir     : %s\n\
+context dir : %s\n\
+job class   : %s\n\
+jar name    : %s\n\
+" $TALENDPROJECT $TALENDJOB $TALENDPREFIX $TALENDPREFIXLCASE $TALENDJOBVER \
+  $TALENDJOBVERUNDERSCORE $TALENDJOBDIR $TALENDJOBCONTEXTSDIR $TALENDJOBCLASS \
+  $TALENDJARNAME;\
+echo "java args     : $JAVA_ARGS";\
+echo "command       : $TALENDCOMMAND --context=$1 \"$@\""
+
+# this traps a interrupt or termination so we can gracefully exit
+trap 'touch ${TALENDJOBDIR}/block' TERM INT
+
+# this runs for ever until interruped, or the block semaphone is created
+while true :
+do
+	if [ -e "${TALENDJOBDIR}/block" ]
+	then
+		echo "breaking due to presence of ${TALENDJOBDIR}/block"
+		break
+	fi
+	$TALENDCOMMAND --context=$1 "$@" &
+	PID=$!
+	wait $PID
+done
+
+trap - TERM
+wait $PID
+rm -f ${TALENDJOBDIR}/block
+EXIT_STATUS=$?
+
+if [ -e "${TALENDJOBDIR}/post_job_hook.sh" ]
+then
+	echo "running post job hook"
+	${TALENDJOBDIR}/post_job_hook.sh
+fi
