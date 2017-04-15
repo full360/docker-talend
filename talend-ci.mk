@@ -122,6 +122,13 @@ $(foreach J,$(JOBINFOFILES),$(foreach D, $(DOCKERFILES),$(eval $(call JOBRULE,$J
 export REGISTRY_REGION
 export KMSKEYPREFIX
 
+ifndef ETL_ROOT
+$(info ETL_ROOT is not set. assuming /etl)
+ETL_ROOT=/etl
+endif
+
+BUILDARGS += "ETL_ROOT=$ETL_ROOT"
+
 .PHONY: showtalendjobs
 showtalendjobs:
 	$(foreach I, $(JOBINFOFILES),  $(info | $(dir $(I)))      )
