@@ -19,18 +19,24 @@ RUN apk add --no-cache \
       # Install AWS cli
       && pip install awscli==${AWSCLI_VER}  \
       && apk --purge -v del py-pip
+      # Install consul-template
+      && curl -s -o /tmp/consul-template.zip https://releases.hashicorp.com/consul-template/$CONSUL_TEMPLATE_VERSION/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
+      && unzip /tmp/consul-template -d /usr/local/bin/ \
+      && rm /tmp/consul-template.zip \
+      # Install biscuit
+      && curl  -s -L -o /tmp/biscuit.tar.gz \
+      https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz && \
+      tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin && \
+      rm /tmp/biscuit.tar.gz
 
-# Install biscuit
-RUN curl  -s -L -o /tmp/biscuit.tar.gz \
-     https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz && \
-    tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin && \
-    rm /tmp/biscuit.tar.gz
-
-# timout script
+# add talend helper scripts
+# This script makes sure that if a job gets stuck it will be restarted
 COPY timeout3 /usr/bin/timeout3
 ENV TALEND_EXECUTABLE "timeout3 -t 3600 java"
+# This script runs the talend job with pre and post hooks
 COPY talend_run /usr/bin/talend_run
-COPY talend_run /usr/bin/talend_block
+# This script runs adds the block file to stop the job gracefully
+COPY talend_block /usr/bin/talend_block
 
 ENTRYPOINT ["talend_run"]
 
