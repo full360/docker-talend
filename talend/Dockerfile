@@ -6,6 +6,9 @@ LABEL build.publish.imagebase="jruby"
 ARG AWSCLI_VER
 ENV PATH .:$PATH
 
+# Envelope version
+ARG CONSUL_TEMPLATE_VERSION=0.14.0
+
 RUN apk add --no-cache \
       bash \
       curl \
@@ -18,7 +21,7 @@ RUN apk add --no-cache \
       && pip install --upgrade pip  \
       # Install AWS cli
       && pip install awscli==${AWSCLI_VER}  \
-      && apk --purge -v del py-pip
+      && apk --purge -v del py-pip \
       # Install consul-template
       && curl -s -o /tmp/consul-template.zip https://releases.hashicorp.com/consul-template/$CONSUL_TEMPLATE_VERSION/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
       && unzip /tmp/consul-template -d /usr/local/bin/ \
