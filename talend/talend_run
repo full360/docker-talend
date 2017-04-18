@@ -1,9 +1,9 @@
 #!/bin/bash
 
-if [ -e "${TALENDJOBDIR}/pre_job_hook.sh" ]
+if [ -e "${TALENDROOTDIR}/bin/init_hook.sh" ]
 then
-	echo "running pre-job hook"
-	${TALENDJOBDIR}/pre_job_hook.sh
+	echo "running init hook"
+	${TALENDROOTDIR}/bin/init_hook.sh
 fi
 
 # set TALENDCOMMAND after any pre-job hooks
@@ -25,17 +25,32 @@ echo "java args     : $JAVA_ARGS";\
 echo "command       : $TALENDCOMMAND --context=$1 \"$@\""
 
 # this traps a interrupt or termination so we can gracefully exit
-trap 'touch ${TALENDJOBDIR}/block' TERM INT
+trap 'touch ${TALENDROOTDIR}/block' TERM INT
 
 # this runs for ever until interruped, or the block semaphone is created
 while true :
 do
+	# run the post job hook if it exists
+	if [ -e "${TALENDJOBDIR}/pre_job_hook.sh" ]
+	then
+		echo "running pre job hook"
+		${TALENDJOBDIR}/pre_job_hook.sh
+	fi
+
 	$TALENDCOMMAND --context=$1 "$@" &
 	PID=$!
 	wait $PID
-	if [ -e "${TALENDJOBDIR}/block" ]
+
+  # run the post job hook if it exists
+	if [ -e "${TALENDJOBDIR}/post_job_hook.sh" ]
 	then
-		echo "breaking due to presence of ${TALENDJOBDIR}/block"
+		echo "running post job hook"
+		${TALENDJOBDIR}/post_job_hook.sh
+	fi
+
+	if [ -e "${TALENDROOTDIR}/block" ]
+	then
+		echo "breaking due to presence of ${TALENDROOTDIR}/block"
 		break
 	fi
 done
@@ -44,9 +59,3 @@ trap - TERM
 wait $PID
 rm -f ${TALENDJOBDIR}/block
 EXIT_STATUS=$?
-
-if [ -e "${TALENDJOBDIR}/post_job_hook.sh" ]
-then
-	echo "running post job hook"
-	${TALENDJOBDIR}/post_job_hook.sh
-fi
