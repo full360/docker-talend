@@ -30,26 +30,57 @@ DOCKERMK := $(shell if [ ! -e docker-ci.mk ]; then \
                     wget -N -q https://raw.githubusercontent.com/full360/docker-ci/master/docker-ci.mk; fi)
 include docker-ci.mk
 
+# consul-template -template "$$<:$$@" --once
 
 ##########################################################################################
 # Definitions
 ##########################################################################################
 
-# This definition extracts the contexts that are available in the talend job and uses consul-template to build
-# the ECR Templates
-define CONTEXTRULE
-# List of ECS JOBS
-DEPLOYECSJOBS += deployecsjob.$C
-GENERATEECSJOBS += generateecsjob.$C
-%-$C-generated.json: %.ctmpl
-	@CONTEXT=$C IMAGE=$(call image_from_dockerfile,$(dir $T)../../Dockerfile) consul-template -template "$$<:$$@" --once \
-	&& cat $(basename $T)-$C-generated.json
+# This definition extracts the contexts that are available in the talend job and
+# uses consul-template to build the ECS and NOMAD Templates
+# DEPLOYMENT_ENVIRONMENT=$(basename $(notdir $E)) ENVMAP_DIR=$(dir $E) \
+#  CONTEXT=$C TALENDIMAGE=$(DOCKER_CI_REPO)$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)):latest \
 
-%-$C-deployed.json : %-$C-generated.json
+define SCHEDULERCONTEXTRULE
+# List of Scheduler JOBS
+DEPLOY$SJOBS += deploy$(call lcase,$S)job.$C
+GENERATE$SJOBS += generate$(call lcase,$S)job.$C
+
+# confirm that consul-template is available
+%.ctmpl : consul-template
+
+$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += DEPLOYMENT_ENVIRONMENT=$(basename $(notdir $E))
+$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += ENVMAP_DIR=$(dir $E)
+$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += CONTEXT=$C
+$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += TALENDIMAGE=$(DOCKER_CI_REPO)$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)):latest
+
+# load the environment variables from SCHEDARGS, BUILDARGS, and the envmap (using envelope)
+# for the deployment environment 
+%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S): %.ctmpl
+	@$($(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS) \
+	 $($(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).BUILDARGS) \
+	 envelope run consul-template -template "$$<:$$@" --once  \
+	&& cat $$@
+
+#create one target for deployment based on the schedule (aws for ecs, nomad for nomad)
+ifeq (ECS,$S)
+# confirm aws cli is available
+%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S) : aws
+
+%-$C-$(basename $(notdir $E))-deployed.json : %-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
 	aws ecs register-task-definition --cli-input-json file://./$$< > $$@
+endif
 
-generateecsjob.$C : $(basename $T)-$C-generated.json
-deployecsjob.$C : $(basename $T)-$C-deployed.json
+ifeq (NOMAD,$S)
+# confirm nomad is available
+%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S) : aws
+
+%-$C-$(basename $(notdir $E))-deployed.json : %-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
+	nomad plan $$< > $$@
+endif
+
+generate$(call lcase,$S)job.$C : $(basename $T)-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
+deploy$(call lcase,$S)job.$C : $(basename $T)-$C-$(basename $(notdir $E))-deployed.json
 endef
 
 # This bit bit of meta programming sets up tar.gz file of the Talend Job and makes
@@ -109,14 +140,27 @@ CONTEXTS := $(sort $(basename $(notdir $(shell find * -mindepth 1 -type f -path 
 # find the consul templates for ecs
 ECSJOBTEMPLATES := $(shell find * -mindepth 1 -type f -path '*/scheduler/ecs/*' -name *.ctmpl)
 
+# find the consul templates for nomad
+NOMADJOBTEMPLATES := $(shell find * -mindepth 1 -type f -path '*/scheduler/nomad/*' -name *.ctmpl)
+
 # find the talend job information files
 JOBINFOFILES := $(shell find * -mindepth 1 -type f -path 'talend/*' -name jobInfo.properties)
 
-# Generate the ecs job template targets based on the contexts available
-$(foreach C,$(CONTEXTS),$(foreach T,$(ECSJOBTEMPLATES),$(eval $(CONTEXTRULE))))
+# find the envmaps
+ENVMAPS := $(shell find * -mindepth 1 -type f -path '*/envmaps/*' -name *.envmap)
 
 # Generate the talend tars to load into the image
 $(foreach J,$(JOBINFOFILES),$(foreach D, $(DOCKERFILES),$(eval $(call JOBRULE,$J,$D))))
+
+# for each scheduler, envmap and context create scheduler definitions using templates
+ifeq (,$(ENVMAPS))
+# Generate the ecs job template targets based on the contexts available
+$(info did not find envmaps)
+$(foreach S,NOMAD ECS,$(foreach E,default,$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
+else
+$(info found envmaps)
+$(foreach S,NOMAD ECS,$(foreach E,$(ENVMAPS),$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
+endif
 
 # export some items for later availability
 export REGISTRY_REGION
@@ -127,6 +171,7 @@ ifndef ETL_ROOT
 ETL_ROOT=/etl
 endif
 
+
 BUILDARGS+=ETL_ROOT=$(ETL_ROOT)
 
 .PHONY: showtalendjobs
@@ -134,11 +179,23 @@ showtalendjobs:
 	$(foreach I, $(JOBINFOFILES),  $(info | $(dir $(I)))      )
 	@exit 0
 
-
 .PHONY: showecs
 showecs:
-	$(foreach I, $(ECSJOBS),  $(info | $(I))     )
+	$(foreach I, $(DEPLOYECSJOBS),  $(info | $(I))     )
 	@exit 0
+
+.PHONY: shownomad
+shownomad:
+	$(foreach I, $(DEPLOYNOMADJOBS),  $(info | $(I))     )
+	@exit 0
+
+deployecsjob.all: $(DEPLOYECSJOBS)
+
+generateecsjob.all: $(GENERATEECSJOBS)
+
+deploynomadjob.all: $(DEPLOYNOMADJOBS)
+
+generatenomadjob.all: $(GENERATENOMADJOBS)
 
 mkhelp : mktalendhelp
 
@@ -146,21 +203,25 @@ mkhelp : mktalendhelp
 mktalendhelp:
 	$(info Available talend targets:             )
 	$(info | showtalendjobs                      )
+	$(info ECS                                   )
 	$(info | showecs                             )
 	$(info | deployecsjob.all                    )
 	$(info | deployecsjob.CONTEXT                )
 	$(info | generateecsjob.all                  )
 	$(info | generateecsjob.CONTEXT              )
+	$(info NOMAD                                 )
+	$(info | shownomad                           )
+	$(info | deploynomadjob.all                  )
+	$(info | deploynomadjob.CONTEXT              )
+	$(info | generatnomadjob.all                 )
+	$(info | generatenomadjob.CONTEXT            )
 	@exit 0
-
-
-deployecsjob.all: $(DEPLOYECSJOBS)
-
-generateecsjob.all: $(GENERATEECSJOBS)
 
 clean : talendclean
 
 talendclean:
 	@find . -type f -name *.tar.gz -exec rm {} \; &&\
 	find . -type f -name *.tgz -exec rm {} \; &&\
+	find . -type f -name *-generated.nomad -exec rm {} \; &&\
+	find . -type f -name *-generated.ecs -exec rm {} \; &&\
 	find . -type f -name *-generated.json -exec rm {} \;
