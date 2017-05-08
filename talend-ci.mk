@@ -153,10 +153,8 @@ $(foreach J,$(JOBINFOFILES),$(foreach D, $(DOCKERFILES),$(eval $(call JOBRULE,$J
 # for each scheduler, envmap and context create scheduler definitions using templates
 ifeq (,$(ENVMAPS))
 # Generate the ecs job template targets based on the contexts available
-$(info did not find envmaps)
 $(foreach S,NOMAD ECS,$(foreach E,default,$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
 else
-$(info found envmaps)
 $(foreach S,NOMAD ECS,$(foreach E,$(ENVMAPS),$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
 endif
 
