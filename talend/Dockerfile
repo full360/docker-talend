@@ -7,7 +7,11 @@ ARG AWSCLI_VER
 ENV PATH .:$PATH
 
 # Envelope version
-ARG CONSUL_TEMPLATE_VERSION=0.14.0
+ARG CONSUL_TEMPLATE_VERSION=0.16.0
+ENV CONSUL_TEMPLATE_VERSION $CONSUL_TEMPLATE_VERSION
+
+ARG ENVELOPE_VERSION=0.3.1
+ENV ENVELOPE_VERSION $ENVELOPE_VERSION
 
 RUN apk add --no-cache \
       bash \
@@ -22,15 +26,24 @@ RUN apk add --no-cache \
       # Install AWS cli
       && pip install awscli==${AWSCLI_VER}  \
       && apk --purge -v del py-pip \
-      # Install consul-template
-      && curl -s -o /tmp/consul-template.zip https://releases.hashicorp.com/consul-template/$CONSUL_TEMPLATE_VERSION/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
-      && unzip /tmp/consul-template -d /usr/local/bin/ \
-      && rm /tmp/consul-template.zip \
+      && curl -s -o /usr/local/share/ca-certificates/full360-root-ca.crt \
+           https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
+      && update-ca-certificates \
       # Install biscuit
       && curl  -s -L -o /tmp/biscuit.tar.gz \
-      https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz && \
-      tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin && \
-      rm /tmp/biscuit.tar.gz
+         https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
+      && tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin \
+      && rm /tmp/biscuit.tar.gz \
+      # Install Envelope
+      && curl -s -o /tmp/envelope.zip \
+           http://releases.full360.com/envelope/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
+      && unzip /tmp/envelope.zip -d /usr/local/bin/ \
+      && rm /tmp/envelope.zip \
+      # Install consul-template
+      && curl -s -o /tmp/consul-template.zip \
+         https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
+      && unzip /tmp/consul-template -d /usr/local/bin/ \
+      && rm /tmp/consul-template.zip
 
 # add talend helper scripts
 # This script makes sure that if a job gets stuck it will be restarted
