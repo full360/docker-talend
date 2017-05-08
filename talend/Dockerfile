@@ -55,7 +55,9 @@ COPY talend_run /usr/bin/talend_run
 # This script runs adds the block file to stop the job gracefully
 COPY talend_block /usr/bin/talend_block
 
-COPY .gnupg .gnupg
+COPY .gnupg /root/.gnupg
+RUN chown -R root:root /root/.gnupg \
+    && chmod 600 /root/.gnupg ; chmod 600 /root/.gnupg/*
 
 ENTRYPOINT ["talend_run"]
 
