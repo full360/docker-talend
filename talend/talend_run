@@ -1,4 +1,5 @@
 #!/bin/bash
+export CONTEXT=$1
 
 if [ -e "${TALENDROOTDIR}/bin/init_hook.sh" ]
 then
@@ -31,10 +32,10 @@ trap 'touch ${TALENDROOTDIR}/block' TERM INT
 while true :
 do
 	# run the post job hook if it exists
-	if [ -e "${TALENDJOBDIR}/pre_job_hook.sh" ]
+	if [ -e "${TALENDROOTDIR}/bin/pre_job_hook.sh" ]
 	then
 		echo "running pre job hook"
-		${TALENDJOBDIR}/pre_job_hook.sh
+		${TALENDROOTDIR}/bin/pre_job_hook.sh
 	fi
 
 	$TALENDCOMMAND --context=$1 "$@" &
@@ -42,10 +43,10 @@ do
 	wait $PID
 
   # run the post job hook if it exists
-	if [ -e "${TALENDJOBDIR}/post_job_hook.sh" ]
+	if [ -e "${TALENDROOTDIR}/bin/post_job_hook.sh" ]
 	then
 		echo "running post job hook"
-		${TALENDJOBDIR}/post_job_hook.sh
+		${TALENDROOTDIR}/bin/post_job_hook.sh
 	fi
 
 	if [ -e "${TALENDROOTDIR}/block" ]
