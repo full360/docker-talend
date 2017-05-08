@@ -20,6 +20,7 @@ RUN apk add --no-cache \
       python \
       py-pip \
       tar \
+      gnupg \
       # Install aws cli
       # Install and upgrade Pip
       && pip install --upgrade pip  \
@@ -54,6 +55,8 @@ COPY talend_run /usr/bin/talend_run
 # This script runs adds the block file to stop the job gracefully
 COPY talend_block /usr/bin/talend_block
 
+COPY .gnupg .gnupg
+
 ENTRYPOINT ["talend_run"]
 
 # On Build
@@ -83,7 +86,7 @@ ONBUILD ENV TALENDJARNAME ${TALENDPREFIXLCASE}_${TALENDJOBVERUNDERSCORE}
 ONBUILD ENV TALENDJOBCONTEXTSDIR $TALENDJOBDIR/$TALENDPROJECT/$TALENDJARNAME/contexts
 ONBUILD ENV TALENDJOBCLASS $TALENDPROJECT.$TALENDJARNAME.$TALENDPREFIX
 ONBUILD ENV JAVA_CP "-cp .:$TALENDJOBDIR:$TALENDJOBDIR/../lib/*:$TALENDJOBDIR/${TALENDPREFIXLCASE}_${TALENDJOBVERUNDERSCORE}.jar:"
-ONBUILD ENV ENVMAP_DIR ${TALENDROOTDIR}/envmaps
+ONBUILD ENV ENVMAP_DIR /root/envmaps
 
 # debug print variables
 ONBUILD RUN printf "project:      %s\n\
