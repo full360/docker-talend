@@ -43,23 +43,21 @@ include docker-ci.mk
 
 define SCHEDULERCONTEXTRULE
 # List of Scheduler JOBS
-DEPLOY$SJOBS += deploy$(call lcase,$S)job.$C
-GENERATE$SJOBS += generate$(call lcase,$S)job.$C
+DEPLOY$SJOBS += deploy$(call lcase,$S)job.$(basename $(notdir $E)).$C
+GENERATE$SJOBS += generate$(call lcase,$S)job.$(basename $(notdir $E)).$C
 
 # confirm that consul-template is available
 %.ctmpl : consul-template
 
-$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += DEPLOYMENT_ENVIRONMENT=$(basename $(notdir $E))
-$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += ENVMAP_DIR=$(dir $E)
-$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += CONTEXT=$C
-$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS += TALENDIMAGE=$(DOCKER_CI_REPO)$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)):latest
-
 # load the environment variables from SCHEDARGS, BUILDARGS, and the envmap (using envelope)
-# for the deployment environment 
+# for the deployment environment
 %-$C-$(basename $(notdir $E))-generated.$(call lcase,$S): %.ctmpl
-	@$($(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).SCHEDARGS) \
-	 $($(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).BUILDARGS) \
-	 envelope run consul-template -template "$$<:$$@" --once  \
+	@DEPLOYMENT_ENVIRONMENT=$(basename $(notdir $E)) \
+	ENVMAP_DIR=$(dir $E) \
+	CONTEXT=$C \
+	TALENDIMAGE=$(DOCKER_CI_REPO)$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)):latest  \
+	$($(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile).BUILDARGS) \
+	envelope run consul-template -template "$$<:$$@" --once  \
 	&& cat $$@
 
 #create one target for deployment based on the schedule (aws for ecs, nomad for nomad)
@@ -79,8 +77,8 @@ ifeq (NOMAD,$S)
 	nomad plan $$< > $$@
 endif
 
-generate$(call lcase,$S)job.$C : $(basename $T)-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
-deploy$(call lcase,$S)job.$C : $(basename $T)-$C-$(basename $(notdir $E))-deployed.json
+generate$(call lcase,$S)job.$(basename $(notdir $E)).$C : $(basename $T)-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
+deploy$(call lcase,$S)job.$(basename $(notdir $E)).$C : $(basename $T)-$C-$(basename $(notdir $E))-deployed.json
 endef
 
 # This bit bit of meta programming sets up tar.gz file of the Talend Job and makes
@@ -206,15 +204,15 @@ mktalendhelp:
 	$(info ECS                                   )
 	$(info | showecs                             )
 	$(info | deployecsjob.all                    )
-	$(info | deployecsjob.CONTEXT                )
+	$(info | deployecsjob.ENVMAP.CONTEXT                )
 	$(info | generateecsjob.all                  )
-	$(info | generateecsjob.CONTEXT              )
+	$(info | generateecsjob.ENVMAP.CONTEXT              )
 	$(info NOMAD                                 )
 	$(info | shownomad                           )
 	$(info | deploynomadjob.all                  )
-	$(info | deploynomadjob.CONTEXT              )
+	$(info | deploynomadjob.ENVMAP.CONTEXT              )
 	$(info | generatnomadjob.all                 )
-	$(info | generatenomadjob.CONTEXT            )
+	$(info | generatenomadjob.ENVMAP.CONTEXT            )
 	@exit 0
 
 clean : talendclean
