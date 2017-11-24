@@ -30,6 +30,7 @@ DOCKERMK := $(shell if [ ! -e docker-ci.mk ]; then \
                     wget -N -q https://raw.githubusercontent.com/full360/docker-ci/master/docker-ci.mk; fi)
 include docker-ci.mk
 
+
 # consul-template -template "$$<:$$@" --once
 
 ##########################################################################################
@@ -43,15 +44,15 @@ include docker-ci.mk
 
 define SCHEDULERCONTEXTRULE
 # List of Scheduler JOBS
-DEPLOY$SJOBS += deploy$(call lcase,$S)job.$(basename $(notdir $E)).$C
-GENERATE$SJOBS += generate$(call lcase,$S)job.$(basename $(notdir $E)).$C
+DEPLOY$SJOBS += deploy$(call lcase,$S)job.$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile))-$(basename $(notdir $E)).$C
+GENERATE$SJOBS += generate$(call lcase,$S)job.$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile))-$(basename $(notdir $E)).$C
 
 # confirm that consul-template is available
-%.ctmpl : consul-template
+$(dir $T)%.ctmpl : consul-template
 
 # load the environment variables from SCHEDARGS, BUILDARGS, and the envmap (using envelope)
 # for the deployment environment
-%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S): %.ctmpl
+$(dir $T)%-$(basename $(notdir $E))-$C-generated.$(call lcase,$S): $(dir $T)%.ctmpl
 	@DEPLOYMENT_ENVIRONMENT=$(basename $(notdir $E)) \
 	ENVMAP_DIR=$(dir $E) \
 	CONTEXT=$C \
@@ -63,22 +64,22 @@ GENERATE$SJOBS += generate$(call lcase,$S)job.$(basename $(notdir $E)).$C
 #create one target for deployment based on the schedule (aws for ecs, nomad for nomad)
 ifeq (ECS,$S)
 # confirm aws cli is available
-%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S) : aws
+$(dir $T)%-$(basename $(notdir $E))-$C-generated.$(call lcase,$S) : aws
 
-%-$C-$(basename $(notdir $E))-deployed.json : %-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
+%-$C-$(basename $(notdir $E))-deployed.json : $(dir $T)%-$(basename $(notdir $E))-$C-generated.$(call lcase,$S)
 	aws ecs register-task-definition --cli-input-json file://./$$< > $$@
 endif
 
 ifeq (NOMAD,$S)
 # confirm nomad is available
-%-$C-$(basename $(notdir $E))-generated.$(call lcase,$S) : aws
+$(dir $T)%-$(basename $(notdir $E))-$C-generated.$(call lcase,$S) : aws
 
-%-$C-$(basename $(notdir $E))-deployed.json : %-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
+$(dir $T)%-$C-$(basename $(notdir $E))-deployed.json : $(dir $T)%-$(basename $(notdir $E))-$C-generated.$(call lcase,$S)
 	nomad plan $$< > $$@
 endif
 
-generate$(call lcase,$S)job.$(basename $(notdir $E)).$C : $(basename $T)-$C-$(basename $(notdir $E))-generated.$(call lcase,$S)
-deploy$(call lcase,$S)job.$(basename $(notdir $E)).$C : $(basename $T)-$C-$(basename $(notdir $E))-deployed.json
+generate$(call lcase,$S)job.$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)).$(basename $(notdir $E)).$C : $(dir $T)$(basename $(notdir $T))-$(basename $(notdir $E))-$C-generated.$(call lcase,$S)
+deploy$(call lcase,$S)job.$(call group,$(call imagebase_from_dockerfile,$(dir $T)../../Dockerfile)).$(basename $(notdir $E)).$C : $(dir $T)$(basename $(notdir $T))-$(basename $(notdir $E))-$C-deployed.json
 endef
 
 # This bit bit of meta programming sets up tar.gz file of the Talend Job and makes
@@ -153,9 +154,9 @@ $(foreach J,$(JOBINFOFILES),$(foreach D, $(DOCKERFILES),$(eval $(call JOBRULE,$J
 # for each scheduler, envmap and context create scheduler definitions using templates
 ifeq (,$(ENVMAPS))
 # Generate the ecs job template targets based on the contexts available
-$(foreach S,NOMAD ECS,$(foreach E,default,$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
+$(foreach S,NOMAD ECS,$(foreach D,$(DOCKERDIRS),$(foreach E,default,$(foreach T,$(filter $D/%, $($SJOBTEMPLATES)),$(foreach C,$(CONTEXTS),$(eval $(SCHEDULERCONTEXTRULE)))))))
 else
-$(foreach S,NOMAD ECS,$(foreach E,$(ENVMAPS),$(foreach C,$(CONTEXTS),$(foreach T,$($SJOBTEMPLATES),$(eval $(SCHEDULERCONTEXTRULE))))))
+$(foreach S,NOMAD ECS,$(foreach D,$(DOCKERDIRS),$(foreach E,$(filter $D/%, $(ENVMAPS)),$(foreach T,$(filter $D/%, $($SJOBTEMPLATES)),$(foreach C,$(CONTEXTS),$(eval	 $(SCHEDULERCONTEXTRULE)))))))
 endif
 
 # export some items for later availability
