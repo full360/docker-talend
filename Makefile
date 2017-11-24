@@ -30,6 +30,8 @@ ifndef BUILDARGS
 BUILDARGS:="AWSCLI_VER=1.11.56"
 endif
 
+# LOCALONLY = true
+
 DOCKERMK := $(shell if [ ! -e docker-ci.mk ]; then \
                     wget -N -q https://raw.githubusercontent.com/full360/docker-ci/master/docker-ci.mk; fi)
 include docker-ci.mk
