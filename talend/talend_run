@@ -48,12 +48,15 @@ do
 		echo "running post job hook"
 		${TALENDROOTDIR}/bin/post_job_hook.sh
 	fi
+  echo "finished post job hook"
 
+  echo "checking if there is a block"
 	if [ -e "${TALENDROOTDIR}/block" ]
 	then
 		echo "breaking due to presence of ${TALENDROOTDIR}/block"
 		break
 	fi
+	echo "after block"
 done
 
 trap - TERM
