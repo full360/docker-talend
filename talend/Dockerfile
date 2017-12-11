@@ -109,6 +109,5 @@ jar name    : %s\n\
 # unpack the talend jar
 ONBUILD ADD talend/$TALENDPREFIX.tar.gz $ETL_ROOT
 ONBUILD RUN chmod -f +x $TALENDROOTDIR/bin/*.sh
-ONBUILD RUN chmod -f +x $TALENDJOBDIR/*.sh
 
 ONBUILD WORKDIR $TALENDJOBDIR
