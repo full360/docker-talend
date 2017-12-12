@@ -1,11 +1,37 @@
 #!/bin/bash
 export CONTEXT=$1
 
-if [ -e "${TALENDROOTDIR}/bin/init_hook.sh" ]
-then
-	echo "running init hook"
-	${TALENDROOTDIR}/bin/init_hook.sh
-fi
+function run_hook {
+	if [ -e "$1" ]
+	then
+		echo "running hook script $1"
+		envelope run $1
+		echo "finshed hook script $1"
+	fi
+}
+
+function runit() {
+	# this runs for ever until interruped, or the block semaphone is created
+while true :
+do
+	run_hook ${TALENDROOTDIR}/bin/pre_job_hook.sh;
+	$TALENDCOMMAND --context=$1 "$@";
+	run_hook ${TALENDROOTDIR}/bin/post_job_hook.sh
+
+	echo "checking if there is a block"
+	if [ -e "${TALENDROOTDIR}/block" ]
+	then
+		echo "breaking due to presence of ${TALENDROOTDIR}/block"
+		break
+	fi
+done
+exit 1
+}
+
+export -f run_hook
+
+# Run init hook
+run_hook ${TALENDROOTDIR}/bin/init_hook.sh
 
 # set TALENDCOMMAND after any pre-job hooks
 export TALENDCOMMAND="${TALEND_EXECUTABLE} ${JAVA_ARGS} ${JAVA_CP} ${TALENDJOBCLASS}"
@@ -26,40 +52,14 @@ echo "java args     : $JAVA_ARGS";\
 echo "command       : $TALENDCOMMAND --context=$1 \"$@\""
 
 # this traps a interrupt or termination so we can gracefully exit
-trap 'touch ${TALENDROOTDIR}/block' TERM INT
+trap 'touch ${TALENDROOTDIR}/block' TERM INT EXIT
 
-# this runs for ever until interruped, or the block semaphone is created
-while true :
-do
-	# run the post job hook if it exists
-	if [ -e "${TALENDROOTDIR}/bin/pre_job_hook.sh" ]
-	then
-		echo "running pre job hook"
-		${TALENDROOTDIR}/bin/pre_job_hook.sh
-	fi
-
-	$TALENDCOMMAND --context=$1 "$@" &
-	PID=$!
-	wait $PID
-
-  # run the post job hook if it exists
-	if [ -e "${TALENDROOTDIR}/bin/post_job_hook.sh" ]
-	then
-		echo "running post job hook"
-		${TALENDROOTDIR}/bin/post_job_hook.sh
-	fi
-  echo "finished post job hook"
-
-  echo "checking if there is a block"
-	if [ -e "${TALENDROOTDIR}/block" ]
-	then
-		echo "breaking due to presence of ${TALENDROOTDIR}/block"
-		break
-	fi
-	echo "after block"
-done
-
-trap - TERM
+# run the pre, main and post job hooks but wait for completion
+# this is run as function so that the sgnals can be trapped across the
+# hooks and main program
+runit $CONTEXT &
+PID=$!
 wait $PID
+
 rm -f ${TALENDJOBDIR}/block
 EXIT_STATUS=$?
