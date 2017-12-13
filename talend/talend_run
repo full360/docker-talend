@@ -63,15 +63,17 @@ run_hook ${TALENDROOTDIR}/bin/init_hook.sh
 # run application
 while true
 do
-	runit &
+	echo "starting talend run"
+	runit 
 	PID="$!"
-	wait ${!}
+	# wait ${!}
 	echo "checking if there is a block"
 	if [ -e "${TALENDROOTDIR}/block" ]
 	then
 		echo "breaking due to presence of ${TALENDROOTDIR}/block"
 		exit
 	fi
+	echo "finished talend run"
 done
 echo "finished running"
 rm -f ${TALENDJOBDIR}/block
