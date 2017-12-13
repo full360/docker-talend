@@ -1,0 +1,21 @@
+#!/bin/bash
+set -x
+
+export CONTEXT=$1
+
+function run_hook() {
+sleep 3 &
+PID=$!
+wait $PID
+}
+
+
+trap 'touch block; kill -TERM $PID' TERM INT
+echo "running 1"
+run_hook
+
+echo "running 2"
+run_hook
+
+echo "running 3"
+run_hook

@@ -1,37 +1,43 @@
 #!/bin/bash
+# set -x
+
 export CONTEXT=$1
+PID=0
+
+# SIGUSR1-handler
+my_handler() {
+  echo "my_handler"
+}
+
+# SIGTERM-handler
+term_handler() {
+  if [ $PID -ne 0 ]; then
+    kill -SIGTERM "$PID"
+    wait "$PID"
+  fi
+  exit 143; # 128 + 15 -- SIGTERM
+}
 
 function run_hook {
 	if [ -e "$1" ]
 	then
 		echo "running hook script $1"
-		envelope run $1
+		$1
 		echo "finshed hook script $1"
 	fi
 }
 
 function runit() {
 	# this runs for ever until interruped, or the block semaphone is created
-while true :
-do
-	run_hook ${TALENDROOTDIR}/bin/pre_job_hook.sh;
-	$TALENDCOMMAND --context=$1 "$@";
+	run_hook ${TALENDROOTDIR}/bin/pre_job_hook.sh && \
+	$TALENDCOMMAND --context=$CONTEXT "$@" && \
 	run_hook ${TALENDROOTDIR}/bin/post_job_hook.sh
-
-	echo "checking if there is a block"
-	if [ -e "${TALENDROOTDIR}/block" ]
-	then
-		echo "breaking due to presence of ${TALENDROOTDIR}/block"
-		break
-	fi
-done
-exit 1
 }
 
-export -f run_hook
-
-# Run init hook
-run_hook ${TALENDROOTDIR}/bin/init_hook.sh
+# setup handlers
+# on callback, kill the last background process, which is `tail -f /dev/null` and execute the specified handler
+trap 'kill ${!}; my_handler' SIGUSR1
+trap 'kill ${!}; term_handler' SIGTERM
 
 # set TALENDCOMMAND after any pre-job hooks
 export TALENDCOMMAND="${TALEND_EXECUTABLE} ${JAVA_ARGS} ${JAVA_CP} ${TALENDJOBCLASS}"
@@ -51,15 +57,23 @@ jar name    : %s\n\
 echo "java args     : $JAVA_ARGS";\
 echo "command       : $TALENDCOMMAND --context=$1 \"$@\""
 
-# this traps a interrupt or termination so we can gracefully exit
-trap 'touch ${TALENDROOTDIR}/block' TERM INT EXIT
+# Run init hook
+run_hook ${TALENDROOTDIR}/bin/init_hook.sh
 
-# run the pre, main and post job hooks but wait for completion
-# this is run as function so that the sgnals can be trapped across the
-# hooks and main program
-runit $CONTEXT &
-PID=$!
-wait $PID
-
+# run application
+while true
+do
+	runit &
+	PID="$!"
+	wait ${!}
+	echo "checking if there is a block"
+	if [ -e "${TALENDROOTDIR}/block" ]
+	then
+		echo "breaking due to presence of ${TALENDROOTDIR}/block"
+		exit
+	fi
+done
+echo "finished running"
 rm -f ${TALENDJOBDIR}/block
 EXIT_STATUS=$?
+exit EXIT_STATUS
