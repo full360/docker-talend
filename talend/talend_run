@@ -1,7 +1,6 @@
 #!/bin/bash
 # set -x
 
-export CONTEXT=$1
 PID=0
 
 # SIGUSR1-handler
@@ -30,7 +29,7 @@ function run_hook {
 function runit() {
 	# this runs for ever until interruped, or the block semaphone is created
 	run_hook ${TALENDROOTDIR}/bin/pre_job_hook.sh && \
-	$TALENDCOMMAND --context=$CONTEXT "$@" && \
+	$TALENDCOMMAND --context=$CONTEXT "$@" && export TPID="$!" && \
 	run_hook ${TALENDROOTDIR}/bin/post_job_hook.sh
 }
 
@@ -64,8 +63,8 @@ run_hook ${TALENDROOTDIR}/bin/init_hook.sh
 while true
 do
 	echo "starting talend run"
-	runit 
-	PID="$!"
+	runit
+	kill $TPID
 	# wait ${!}
 	echo "checking if there is a block"
 	if [ -e "${TALENDROOTDIR}/block" ]
