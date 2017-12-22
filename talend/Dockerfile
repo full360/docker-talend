@@ -16,11 +16,12 @@ ENV ENVELOPE_VERSION $ENVELOPE_VERSION
 RUN apk add --no-cache \
       bash \
       curl \
+      tini \
+      gnupg \
       openssl \
       python \
       py-pip \
       tar \
-      gnupg \
       # Install aws cli
       # Install and upgrade Pip
       && pip install --upgrade pip  \
@@ -59,7 +60,7 @@ COPY .gnupg /root/.gnupg
 RUN chown -R root:root /root/.gnupg \
     && chmod 600 /root/.gnupg ; chmod 600 /root/.gnupg/*
 
-ENTRYPOINT ["talend_run"]
+ENTRYPOINT ["/sbin/tini", "--"]
 
 # On Build
 ONBUILD ARG ETL_ROOT=/etl
