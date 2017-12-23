@@ -60,7 +60,9 @@ COPY .gnupg /root/.gnupg
 RUN chown -R root:root /root/.gnupg \
     && chmod 600 /root/.gnupg ; chmod 600 /root/.gnupg/*
 
-ENTRYPOINT ["/sbin/tini", "--"]
+# Use tini - https://github.com/krallin/tini
+# To manage the background calls and zombies 
+ENTRYPOINT ["/sbin/tini", "-g", "--", "envelope", "run", "talend_run"]
 
 # On Build
 ONBUILD ARG ETL_ROOT=/etl
