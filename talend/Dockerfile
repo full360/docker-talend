@@ -20,20 +20,20 @@ RUN apt-get update \
   awscli \
   && rm -rf /var/lib/apt/lists/* \
   && curl -s -o /usr/local/share/ca-certificates/full360-root-ca.crt \
-  https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
+    https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
   && update-ca-certificates \
   && curl -s -o /tmp/envelope.zip \
-  https://releases-full360.s3.amazonaws.com/public/envelope/${ENVELOPE_VERSION}/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
+    https://releases-full360.s3.amazonaws.com/public/envelope/${ENVELOPE_VERSION}/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
   && unzip /tmp/envelope.zip -d /usr/local/bin/ \
   && rm /tmp/envelope.zip \
   # Install biscuit
   && curl  -s -L -o /tmp/biscuit.tar.gz \
-     https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
+    https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
   && tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin \
   && rm /tmp/biscuit.tar.gz \
   # Install consul-template
   && curl -s -o /tmp/consul-template.zip \
-     https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
+    https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
   && unzip /tmp/consul-template -d /usr/local/bin/ \
   && rm /tmp/consul-template.zip
 
