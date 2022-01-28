@@ -1,53 +1,43 @@
-FROM jruby:9.1-jre-alpine
+FROM jruby:9.2-jre8
 
-LABEL build.publish.majorversion="9.1-jre-alpine"
-LABEL build.publish.imagebase="jruby"
+LABEL build.publish.majorversion="9.2"
+LABEL build.publish.imagebase="jre8"
 
 ARG AWSCLI_VER
 ENV PATH .:$PATH
 
+# Consul Template version
+ENV CONSUL_TEMPLATE_VERSION 0.19.4
+
 # Envelope version
-ARG CONSUL_TEMPLATE_VERSION=0.19.4
-ENV CONSUL_TEMPLATE_VERSION $CONSUL_TEMPLATE_VERSION
+ENV ENVELOPE_VERSION 0.4.0
 
-ARG ENVELOPE_VERSION=0.3.1
-ENV ENVELOPE_VERSION $ENVELOPE_VERSION
+# Install dependencies including f360 certs and envelope
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+  tini \
+  gnupg \
+  awscli \
+  && rm -rf /var/lib/apt/lists/* \
+  && curl -s -o /usr/local/share/ca-certificates/full360-root-ca.crt \
+    https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
+  && update-ca-certificates \
+  && curl -s -o /tmp/envelope.zip \
+    https://releases-full360.s3.amazonaws.com/public/envelope/${ENVELOPE_VERSION}/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
+  && unzip /tmp/envelope.zip -d /usr/local/bin/ \
+  && rm /tmp/envelope.zip \
+  # Install biscuit
+  && curl  -s -L -o /tmp/biscuit.tar.gz \
+    https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
+  && tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin \
+  && rm /tmp/biscuit.tar.gz \
+  # Install consul-template
+  && curl -s -o /tmp/consul-template.zip \
+    https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
+  && unzip /tmp/consul-template -d /usr/local/bin/ \
+  && rm /tmp/consul-template.zip
 
-RUN apk add --no-cache \
-      bash \
-      curl \
-      tini \
-      gnupg \
-      openssl \
-      python \
-      py-pip \
-      tar \
-      # Install aws cli
-      # Install and upgrade Pip
-      && pip install --upgrade pip  \
-      # Install AWS cli
-      && pip install awscli==${AWSCLI_VER}  \
-      && apk --purge -v del py-pip \
-      && curl -s -o /usr/local/share/ca-certificates/full360-root-ca.crt \
-           https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
-      && update-ca-certificates \
-      # Install biscuit
-      && curl  -s -L -o /tmp/biscuit.tar.gz \
-         https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
-      && tar zxf /tmp/biscuit.tar.gz -C /usr/local/bin \
-      && rm /tmp/biscuit.tar.gz \
-      # Install Envelope
-      && curl -s -o /tmp/envelope.zip \
-           http://releases.full360.com/envelope/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
-      && unzip /tmp/envelope.zip -d /usr/local/bin/ \
-      && rm /tmp/envelope.zip \
-      # Install consul-template
-      && curl -s -o /tmp/consul-template.zip \
-         https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip \
-      && unzip /tmp/consul-template -d /usr/local/bin/ \
-      && rm /tmp/consul-template.zip
-
-# add talend helper scripts
+# Add talend helper scripts
 # This script makes sure that if a job gets stuck it will be restarted
 COPY timeout3 /usr/bin/timeout3
 ENV TALEND_EXECUTABLE "timeout3 -t 3600 java"
@@ -58,11 +48,11 @@ COPY talend_block /usr/bin/talend_block
 
 COPY .gnupg /root/.gnupg
 RUN chown -R root:root /root/.gnupg \
-    && chmod 600 /root/.gnupg ; chmod 600 /root/.gnupg/*
+  && chmod 600 /root/.gnupg ; chmod 600 /root/.gnupg/*
 
 # Use tini - https://github.com/krallin/tini
 # To manage the background calls and zombies
-ENTRYPOINT ["/sbin/tini", "-g", "--", "envelope", "run", "talend_run"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "envelope", "run", "talend_run"]
 
 # On Build
 ONBUILD ARG ETL_ROOT=/etl
