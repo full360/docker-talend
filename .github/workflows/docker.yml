@@ -32,8 +32,8 @@ jobs:
     - name: Build JRuby 9.2 JRE 8
       uses: docker/build-push-action@v2
       with:
-        context: ./jruby/9.2/jre8
-        file: ./jruby/9.2/jre8/Dockerfile
+        context: ./talend
+        file: ./talend/Dockerfile
         pull: true
         push: true
         tags: |
