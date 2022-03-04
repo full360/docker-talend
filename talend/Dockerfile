@@ -9,10 +9,7 @@ ENV PATH .:$PATH
 # Consul Template version
 ENV CONSUL_TEMPLATE_VERSION 0.19.4
 
-# Envelope version
-ENV ENVELOPE_VERSION 0.4.0
-
-# Install dependencies including f360 certs and envelope
+# Install dependencies including f360 certs
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
   tini \
@@ -22,10 +19,6 @@ RUN apt-get update \
   && curl -s -o /usr/local/share/ca-certificates/full360-root-ca.crt \
     https://s3.amazonaws.com/full360-cloudformation-init/public/full360-root-ca.crt \
   && update-ca-certificates \
-  && curl -s -o /tmp/envelope.zip \
-    https://releases-full360.s3.amazonaws.com/public/envelope/${ENVELOPE_VERSION}/envelope_${ENVELOPE_VERSION}_linux_amd64.zip \
-  && unzip /tmp/envelope.zip -d /usr/local/bin/ \
-  && rm /tmp/envelope.zip \
   # Install biscuit
   && curl  -s -L -o /tmp/biscuit.tar.gz \
     https://github.com/dcoker/biscuit/releases/download/v0.1.3/biscuit-linux_386.tgz \
@@ -52,7 +45,7 @@ RUN chown -R root:root /root/.gnupg \
 
 # Use tini - https://github.com/krallin/tini
 # To manage the background calls and zombies
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "envelope", "run", "talend_run"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "talend_run"]
 
 # On Build
 ONBUILD ARG ETL_ROOT=/etl

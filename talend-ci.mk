@@ -108,8 +108,8 @@ talend/$$(job) : $1
 # Dependency of tar on the job directory under talend
 %/talend/$$(job).tar  : talend/$$(job)
 	mkdir -p $$*/talend \
-  && tar cvfC $$@ talend/ $$(basename $$(notdir $$@)) \
-	&& tar rvfC $$@ talend_overrides/ $$(basename $$(notdir $$@))
+	&& tar -cvf $$@ -C talend/ $$(basename $$(notdir $$@)) \
+	&& tar -rvf $$@ -C talend_overrides/ $$(basename $$(notdir $$@))
 
 # Dependency of gz on tar
 %/$$(job).tar.gz : %/$$(job).tar
